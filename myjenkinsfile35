@@ -1,0 +1,85 @@
+pipeline{
+    agent{
+        label "slave3"
+    }
+    tools{
+        maven 'maven3.9.6'
+    }
+    //options{}
+    //triggers{}
+    stages{
+        stage('1.clonecode'){
+            steps{
+                sh "echo Cloning Code from SCM"
+                git "https://github.com/mypalmpay/jenkin-maven-web-application"
+                sh "echo Code Cloned Successfully"
+            }
+        }
+        stage('2.mavenbuild'){
+            steps{
+                sh "echo Validating, Compiling, Testing and Building Package"
+                sh "mvn package"
+                sh "echo Package Building Successful"
+            }
+        }
+        stage('3.codequality'){
+            steps{
+                sh "echo Code Quality Analysis in Progress"
+                sh "mvn sonar:sonar"
+                sh "echo Code Quality Analysis Completed"
+            }
+        }
+        stage('4.uploadartifacts'){
+            steps{
+                sh "echo Uploading Artifacts to Remote Repository"
+                sh "mvn deploy"
+                sh "echo Artifacts uploaded successfully"
+            }
+        }
+        stage('5.upload2UAT'){
+            steps{
+                //Use Pipeline Syntax for this
+                deploy adapters: [tomcat9(credentialsId: 'tomcatcredential', path: '', url: 'http://18.221.65.163:8081/')], contextPath: null, war: 'target/*war'
+            }
+        }
+        stage('6.Manualapproval'){
+            steps{
+                sh " echo Application Ready For Deployment to Producction"
+                timeout(time: 120, unit: 'HOURS'){
+                    input message: "Please Review & approve"
+                }
+            }
+        }
+        stage('7.deploy2Prod'){
+            steps{
+                deploy adapters: [tomcat9(credentialsId: 'tomcatcredential', path: '', url: 'http://18.221.65.163:8081/')], contextPath: null, war: 'target/*war'
+
+            }
+        }
+    }
+    
+    post{
+        always{
+            emailext body: '''Hi Team
+
+Regards,
+LandmarkTech
++1 (234) 5432-4647''', subject: 'Build Status', to: 'lawrencetech2013@gmail.com'
+        }
+        success{
+          emailext body: '''Hi Team
+
+Regards,
+LandmarkTech
++1 (234) 5432-4647''', subject: 'Build Success', to: 'lawrencetech2013@gmail.com'  
+        }
+        failure{
+            emailext body: '''Hi Team
+
+Regards,
+LandmarkTech
++1 (234) 5432-4647''', subject: 'Build Failed', to: 'lawrencetech2013@gmail.com'
+        }
+    }
+    
+}
